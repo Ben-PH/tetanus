@@ -1,0 +1,6 @@
+[package]
+name = "blog_os"
+version = "0.1.0"
+authors = ["Ben PH"]
+
+[dependencies]
