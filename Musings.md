@@ -123,3 +123,13 @@ What I **do** understand, is this: Although Writer struct contains `unsafe` in i
 engineered safety into it. This is done by wrapping `unsafe` containing type into a `Mutex`.
 As a system, this has the flaw of not _guaranteeing_ unsafe code is behind a safe interface,
 but provides an _effective_ tooling system to make this straight forward.
+
+## Do~~n't~~ panic.
+
+With our global `Writer` interface allowing us to implement `println!` and `print!`, we can
+now get down to writing `panic!` at the disco.
+
+Without going into details of how rust macros work, we setup for three possibles. No, one, or
+any other number of args. Well, "all it does is print it like println then inf loop, right?"
+...not quite. well, yes, it just does `println!`, but it takes the form of `&PanicInfo` type.
+This allows it to give the extra information.
