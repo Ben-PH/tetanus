@@ -15,3 +15,6 @@ features = ["spin_no_std"]
 
 [package.metadata.bootimage]
 default-target = "x86_64-blog_os.json"
+
+[dev-dependencies]
+array-init = "0.0.3"
