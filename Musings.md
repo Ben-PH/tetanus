@@ -175,3 +175,13 @@ and checks that everything is as it should be.
 
 There is something missing here. Remember how it runs on the host machine? the buffer
 sits at `0xb800`. We need to run this in QEMU environment to sort this out.
+
+
+
+## Integration testing - "we ain't in software anymore"
+We can't see what comes up in QEMU to see how running on "hardware" goes. Rather than
+pushing data to the "screen" (memory mapped I/O `0xb8000` for our vga text buffer), we'll
+push the data to another memory map - this time a memory mapped port: `port-mapped I/O`.
+
+This uses a separate bus for communication. we take advantage of the cpu's `in` and `out`.
+We'll be using UART: `uart_16550` and its crate to abstract away the nitty-gritty.
