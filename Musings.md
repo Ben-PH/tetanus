@@ -86,3 +86,20 @@ for us to take the easy way out.
 All we need to do, is manage the `write_str` method in `core::fmt::write`. this method takes a thing
 that you are writing to, and a string. If we just call `self.write_string(s)`, we can as the
 definition of `write_str()` for `Writer`, then the `write!` macro will just format `s` for us.
+
+### Be static, my dear Writer.
+So having a `pub static WRITER` is interesting, because the compiler complains about 
+dereffing raw pointers in constants and other shenanigans. I need to learn WTF is happening...
+
+This WRITER static is actually compile-time, I suspect written directly into the binary. This
+limits what you can call to, and we are going outside those limits.
+
+We are also trying to load up `WRITER` with a mutable variable. Defining a mutable in the binary,
+yeah, I can see why it's complaining...
+
+This is partly a rust-compiler limitation: "Rust's const evaluator is not able to convert raw
+pointers to references at compile time". For now at least.
+
+so, in the mean time, **`lazy_static!` to the rescue**
+This `macro_use` boi stops this _compile time_ deficiency and kicks the can down the road to
+a _run time_ responsibility.

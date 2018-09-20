@@ -5,6 +5,9 @@
 extern crate bootloader_precompiled;
 extern crate volatile;
 
+#[macro_use]
+extern crate lazy_static;
+
 mod vga_buffer;
 
 use core::panic::PanicInfo;

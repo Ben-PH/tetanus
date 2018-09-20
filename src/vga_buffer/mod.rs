@@ -136,3 +136,11 @@ impl fmt::Write for Writer {
         Ok(())
     }
 }
+
+lazy_static!{
+    pub static ref WRITER: Writer = Writer {
+        column_position: 0,
+        color_code: ColorCode::new(Color::Yellow, Color::Black),
+        vga_buffer: unsafe { &mut *(0xb8000 as *mut VGABuffer) },
+    };
+}
