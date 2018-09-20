@@ -19,6 +19,8 @@ extern crate lazy_static;
 
 #[macro_use]
 mod vga_buffer;
+
+#[macro_use]
 mod serial;
 
 
@@ -36,8 +38,9 @@ pub fn panic(info: &PanicInfo) -> ! {
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
 
-    println!("hello, there");
-    println!();
-    println!("this has {} extra args", 1);
+    println!("Hello, vga buffer");
+    serial_println!("Hello, {}, I am {}", "host", "serial");
+    serial_println!("super serial");
+    serial_println!();
     panic!("Panic! at the disco");
 }
