@@ -211,3 +211,18 @@ or if you want to output to a file instead of stdout...
 ```
 -serial file:output-file.txt
 ```
+
+### isa-debug-exit to the resscue
+
+we need to write to one of the ports in the x86_64 architectures IO bus. in this case we
+use `0xf4`. We pump 4 bytes into the port with `port.write(0)`. That gets shifted leftt 1, then
+the last bit becomes 1: `(bytes << 1) | 1`
+
+Notice how QEMU geos away immediately? probabyl want to hide it altogether, right?
+
+```
+bootimage run -- \
+    -serial mon:stdio \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+    -display none
+```

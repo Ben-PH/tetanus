@@ -16,6 +16,7 @@ extern crate uart_16550;
 
 #[macro_use]
 extern crate lazy_static;
+extern crate x86_64;
 
 #[macro_use]
 mod vga_buffer;
@@ -42,5 +43,14 @@ pub extern "C" fn _start() -> ! {
     serial_println!("Hello, {}, I am {}", "host", "serial");
     serial_println!("super serial");
     serial_println!();
-    panic!("Panic! at the disco");
+    unsafe {exit_qemu(); }
+    loop {}
+}
+
+// unsafe: QEMU defice on IO port addr 0xf4
+pub unsafe fn exit_qemu() {
+    use x86_64::instructions::port::Port;
+
+    let mut port = Port::<u32>::new(0xf4); // 19
+    port.write(0);
 }
