@@ -147,3 +147,54 @@ pub fn print(args: fmt::Arguments) {
     WRITER.lock().write_fmt(args).unwrap();
 }
 
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    fn construct_writer() -> Writer {
+        use std::boxed::Box;
+
+        let buffer = construct_buffer();
+        Writer {
+            column_position: 0,
+            color_code: ColorCode::new(Color::Blue, Color::Magenta),
+            vga_buffer: Box::leak(Box::new(buffer)),
+        }
+    }
+
+    fn construct_buffer() -> VGABuffer {
+        use array_init::array_init;
+
+        VGABuffer {
+            vga_buff_chars: array_init(|_| array_init(|_| Volatile::new(empty_char()))),
+        }
+    }
+    fn empty_char() -> ScreenChar {
+        ScreenChar {
+            ascii_character: b' ',
+            color_code: ColorCode::new(Color::Green, Color::Brown),
+        }
+    }
+
+    #[test]
+    fn write_byte() {
+        let mut writer = construct_writer();
+        writer.write_byte(b'X');
+        writer.write_byte(b'Y');
+
+        for (i, row) in writer.vga_buffer.vga_buff_chars.iter().enumerate() {
+            for (j, screen_char) in row.iter().enumerate() {
+                let screen_char = screen_char.read();
+                if i == BUFFER_HEIGHT - 1 && j == 0 {
+                    assert_eq!(screen_char.ascii_character, b'X');
+                    assert_eq!(screen_char.color_code, writer.color_code);
+                } else if i == BUFFER_HEIGHT - 1 && j == 1 {
+                    assert_eq!(screen_char.ascii_character, b'Y');
+                    assert_eq!(screen_char.color_code, writer.color_code);
+                } else {
+                    assert_eq!(screen_char, empty_char());
+                }
+            }
+        }
+    }
+}

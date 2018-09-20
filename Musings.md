@@ -133,3 +133,45 @@ Without going into details of how rust macros work, we setup for three possibles
 any other number of args. Well, "all it does is print it like println then inf loop, right?"
 ...not quite. well, yes, it just does `println!`, but it takes the form of `&PanicInfo` type.
 This allows it to give the extra information.
+
+## Unit testing. The golden path to awesome.
+
+I have a feeling this will be fun
+
+
+### configuring for tests
+so although a lot of this is "code by numbers", this one particularly so. A lot of the work
+here was in managing `#[cfg(...)]` where `...` became `test` and `not(test)`. We also had
+to tweak `#![cfg_attr]` to become `#![cfg_attr(not test), no_main]`, It's interesting to me,
+because a test run will have two `_start()`'s and one `main()`. We only compile `_start()`
+when it's not test, and we only bring in a `main()` when there **is** a test.
+
+### Why we bring in std crate
+I'm told the tests run on the host machine (reverting back to having `main()` makes sense),
+hence we bring in `std` crate. I'm guessing the host serves the role of qemu when this is
+happening.
+
+### the test module
+At the bottom of `vga_buffer/mod.rs`, we build our `mod test` code. We have to refer back
+to `main.rs`, so we have `use super::*;`. we give make a Writer constructor, which itself
+calls a buffer constructor. This is an interesting one, because the naive approach will
+fail. the `Volatile` in `Volatile<ScreenChar>` doesn't meet rusts requirements for safe 
+array construction. we bring in `array-init` which is a safe interface. As it's in `test`,
+we make it a `[dev-dependancies]` in our `.toml`
+
+we can use `array_init(|_| array_init(|_| Volatile::new(empty_char())))`, which I'm _guessing_
+safely does the copy. I'm no good with closures (for now...)
+
+
+Now that we have Writer and buffer constructors, we can do the tests.
+
+The first one, it makes Writer with `construct_writer()`, does a pair of writes using
+`writer.write_byte(b'...')` then iterates over the buffer to make sure everything is
+as it should be.
+
+The second one uses the `writeln!` macro instead of `write_byte` to write different
+strings. It does the same: iteraties over `vga_buffer_chars` with `.iter().enumerated()`
+and checks that everything is as it should be.
+
+There is something missing here. Remember how it runs on the host machine? the buffer
+sits at `0xb800`. We need to run this in QEMU environment to sort this out.
