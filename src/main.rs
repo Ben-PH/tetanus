@@ -3,33 +3,32 @@
 #![no_main]
 
 extern crate bootloader_precompiled;
+extern crate volatile;
+extern crate spin;
 
+
+#[macro_use]
+extern crate lazy_static;
+
+#[macro_use]
+mod vga_buffer;
 
 use core::panic::PanicInfo;
 
+
 #[panic_handler]
 #[no_mangle]
-pub fn panic(_info: &PanicInfo) -> ! {
-    loop{}
-}
-static HELLO: &[u8] = b"Hello World!";
-
-
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
-
-    // Entry point, We need to give the linker something to work with.
-
-    let vga_buffer = 0xb8000 as *mut u8;
-
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
-        }
-    }
+pub fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
     loop {}
 }
 
+/// Entry point, We need to give the linker something to work with.
+#[no_mangle]
+pub extern "C" fn _start() -> ! {
 
-
+    println!("hello, there");
+    println!();
+    println!("this has {} extra args", 1);
+    panic!("Panic! at the disco");
+}
