@@ -4,6 +4,8 @@
 
 extern crate bootloader_precompiled;
 extern crate volatile;
+extern crate spin;
+
 
 #[macro_use]
 extern crate lazy_static;
@@ -22,6 +24,9 @@ pub fn panic(_info: &PanicInfo) -> ! {
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
 
-    vga_buffer::Writer::print_something();
+    use core::fmt::Write;
+    vga_buffer::WRITER.lock().write_str("Hello, there").unwrap();
+    write!(vga_buffer::WRITER.lock(), "I've given you {} and {}... Mwahahaha!", 42, 1.0/10.0).unwrap();
+    write!(vga_buffer::WRITER.lock(), "and now a new line!!!!!!!!!!!!!!!!!!\nanother!").unwrap();
     loop {}
 }

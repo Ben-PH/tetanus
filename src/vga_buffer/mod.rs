@@ -111,21 +111,6 @@ impl Writer {
             }
         }
     }
-
-    pub fn print_something() {
-        use core::fmt::Write;
-        let mut writer = Writer {
-            column_position: 0,
-            color_code: ColorCode::new(Color::Yellow, Color::Black),
-            vga_buffer: unsafe { &mut *(0xb8000 as *mut VGABuffer) },
-        };
-
-        writer.write_byte(b'H');
-        writer.write_string("ello ");
-        writer.write_string("Wörld!");
-        write!(writer, "I've given you {} and {}... Mwahahaha!", 42, 1.0/10.0).unwrap();
-        write!(writer, "and now a new line!!!!!!!!!!!!!!!!!!\nanother!").unwrap();
-    }
 }
 
 /// Makes use of the formatting function in write_string for Writer
@@ -137,10 +122,11 @@ impl fmt::Write for Writer {
     }
 }
 
+use spin::Mutex;
 lazy_static!{
-    pub static ref WRITER: Writer = Writer {
+    pub static ref WRITER: Mutex<Writer> = Mutex::new(Writer {
         column_position: 0,
         color_code: ColorCode::new(Color::Yellow, Color::Black),
         vga_buffer: unsafe { &mut *(0xb8000 as *mut VGABuffer) },
-    };
+    });
 }
