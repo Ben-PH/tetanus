@@ -185,3 +185,29 @@ push the data to another memory map - this time a memory mapped port: `port-mapp
 
 This uses a separate bus for communication. we take advantage of the cpu's `in` and `out`.
 We'll be using UART: `uart_16550` and its crate to abstract away the nitty-gritty.
+
+### Hello vga...
+To print from serial, we need to make a static ref, wrap it in a Mutex and... waaaait,
+I've seen this before :P
+
+our static ref is a new `SerialPort` number `0x3F8` (1016). We `init()` it, which is relevant
+to the need for `lazy_static!` and put it in a Mutex before returning.
+We can use this static ref to print: lock it, format the args, and `.expect()` it.
+
+We use that to make a macro (`macro_rules!`) for `serial_print(ln)!`
+
+To run: 
+```
+> qemu-system-x86_64 \
+    -drive format=raw,file=target/x86_64-blog_os/debug/bootimage-blog_os.bin \
+    -serial mon:stdio
+```
+or...
+```
+bootimage run -- -serial mon:stdio
+```
+
+or if you want to output to a file instead of stdout...
+```
+-serial file:output-file.txt
+```
