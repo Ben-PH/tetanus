@@ -11,6 +11,7 @@ extern crate std;
 extern crate bootloader_precompiled;
 extern crate volatile;
 extern crate spin;
+extern crate uart_16550;
 
 
 #[macro_use]
@@ -18,6 +19,8 @@ extern crate lazy_static;
 
 #[macro_use]
 mod vga_buffer;
+mod serial;
+
 
 use core::panic::PanicInfo;
 #[cfg(not(test))]
