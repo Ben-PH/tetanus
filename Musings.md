@@ -78,3 +78,11 @@ need to be interested in `bootimage build --target foo.json`
 ### A volatile personality?
 We are playing with a VGABuffer. Because we are "just" writing to it, optimisers will tend to think
 of it as a redundant piece of code. Not so. `volatile` will sort that out. Documentation [here](https://docs.rs/volatile/0.2.4/volatile/struct.Volatile.html#method.write)
+
+### Traits to the resue!
+So our `write_string` is missing the obvious formatting. We need to `impl core::fmt::write for Writer`
+for us to take the easy way out.
+
+All we need to do, is manage the `write_str` method in `core::fmt::write`. this method takes a thing
+that you are writing to, and a string. If we just call `self.write_string(s)`, we can as the
+definition of `write_str()` for `Writer`, then the `write!` macro will just format `s` for us.

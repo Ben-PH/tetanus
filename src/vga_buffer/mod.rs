@@ -46,6 +46,7 @@ const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
 use volatile::Volatile;
+
 /// Standard VGA buffer, norminally 80-wide, 25-high
 /// VGA: Video Graphics array.
 /// VGA uffer VGA-compatable text mode. Wikipedia says it's quite complex
@@ -81,7 +82,26 @@ impl Writer {
         }
     }
 
-    fn new_line(&mut self) {/* TODO */}
+    fn new_line(&mut self) {
+        for row in 1..BUFFER_HEIGHT {
+            for col in 0..BUFFER_WIDTH {
+                let character = self.vga_buffer.vga_buff_chars[row][col].read();
+                self.vga_buffer.vga_buff_chars[row - 1][col].write(character);
+            }
+        }
+        self.clear_row(BUFFER_HEIGHT - 1);
+        self.column_position = 0;
+    }
+
+    fn clear_row(&mut self, row: usize) {
+        let blank = ScreenChar {
+            ascii_character: b' ',
+            color_code: self.color_code,
+        };
+        for col in 0..BUFFER_WIDTH {
+            self.vga_buffer.vga_buff_chars[row][col].write(blank);
+        }
+    }
 
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
@@ -93,6 +113,7 @@ impl Writer {
     }
 
     pub fn print_something() {
+        use core::fmt::Write;
         let mut writer = Writer {
             column_position: 0,
             color_code: ColorCode::new(Color::Yellow, Color::Black),
@@ -102,5 +123,16 @@ impl Writer {
         writer.write_byte(b'H');
         writer.write_string("ello ");
         writer.write_string("Wörld!");
+        write!(writer, "I've given you {} and {}... Mwahahaha!", 42, 1.0/10.0).unwrap();
+        write!(writer, "and now a new line!!!!!!!!!!!!!!!!!!\nanother!").unwrap();
+    }
+}
+
+/// Makes use of the formatting function in write_string for Writer
+use core::fmt;
+impl fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.write_string(s);
+        Ok(())
     }
 }
