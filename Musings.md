@@ -226,3 +226,9 @@ bootimage run -- \
     -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
     -display none
 ```
+
+## MOAR EXECUTABLES? This is getting out of hand!
+
+`src/bin` is your friend here
+
+in each file in this dir, a new `_start()` is basically a different kernel init.
