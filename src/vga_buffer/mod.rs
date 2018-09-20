@@ -45,17 +45,18 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
+use volatile::Volatile;
 /// Standard VGA buffer, norminally 80-wide, 25-high
 /// VGA: Video Graphics array.
 /// VGA uffer VGA-compatable text mode. Wikipedia says it's quite complex
 struct VGABuffer {
-    vga_buff_chars: [[ScreenChar; BUFFER_WIDTH]; BUFFER_HEIGHT],
+    vga_buff_chars: [[Volatile<ScreenChar>; BUFFER_WIDTH]; BUFFER_HEIGHT],
 }
 
 pub struct Writer {
     column_position: usize,
     color_code: ColorCode,
-    buffer: &'static mut VGABuffer,
+    vga_buffer: &'static mut VGABuffer,
 }
 
 impl Writer {
@@ -71,10 +72,10 @@ impl Writer {
                 let col = self.column_position;
 
                 let color_code = self.color_code;
-                self.buffer.vga_buff_chars[row][col] = ScreenChar {
+                self.vga_buffer.vga_buff_chars[row][col].write(ScreenChar {
                     ascii_character: byte,
                     color_code: color_code,
-                };
+                });
                 self.column_position += 1;
             }
         }
@@ -95,7 +96,7 @@ impl Writer {
         let mut writer = Writer {
             column_position: 0,
             color_code: ColorCode::new(Color::Yellow, Color::Black),
-            buffer: unsafe { &mut *(0xb8000 as *mut VGABuffer) },
+            vga_buffer: unsafe { &mut *(0xb8000 as *mut VGABuffer) },
         };
 
         writer.write_byte(b'H');

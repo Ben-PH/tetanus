@@ -74,3 +74,7 @@ Then, we put in the byte, and ++ the index.
 
 Remember, we aren't doing `cargo build`, we aren't doing just `cargo xbuild --target foo.json`, we
 need to be interested in `bootimage build --target foo.json`
+
+### A volatile personality?
+We are playing with a VGABuffer. Because we are "just" writing to it, optimisers will tend to think
+of it as a redundant piece of code. Not so. `volatile` will sort that out. Documentation [here](https://docs.rs/volatile/0.2.4/volatile/struct.Volatile.html#method.write)

@@ -3,6 +3,7 @@
 #![no_main]
 
 extern crate bootloader_precompiled;
+extern crate volatile;
 
 mod vga_buffer;
 
