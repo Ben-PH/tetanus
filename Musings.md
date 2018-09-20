@@ -70,4 +70,7 @@ As of writing this... [It's working... IT'S WORKING](https://i.ytimg.com/vi/AXwG
 
 Then, we put in the byte, and ++ the index.
 
-putting 
+### It ain't a simple compile.
+
+Remember, we aren't doing `cargo build`, we aren't doing just `cargo xbuild --target foo.json`, we
+need to be interested in `bootimage build --target foo.json`
