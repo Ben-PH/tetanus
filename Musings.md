@@ -103,3 +103,23 @@ pointers to references at compile time". For now at least.
 so, in the mean time, **`lazy_static!` to the rescue**
 This `macro_use` boi stops this _compile time_ deficiency and kicks the can down the road to
 a _run time_ responsibility.
+
+## Things getting interesting? First Mutex!
+
+Pre-read, we are using `spin` crate, which lets us `use spin::Mutex`. That will let us 
+wrap up `WRITER` with a `Mutex<Writer>` type. This will reduce the prevelance of `unsafe`.
+
+...so we have a `vga_buffor` and that has a global `WRITER` interface. Because `WRITER` is
+_actually_ a `MUTEX` wrapping up a `Writer`, we can safely access its `Writer` with
+`vga_buffer::WRITER.lock()` instead of a naked `Writer`.
+
+#### make unsafe stuff safe!
+We have just the one `unsafe` because `&mut *(0xb8000 as *mut Buffer)`. I'm not exactly sure
+what's going on here. I'm thinking "well WRITER's buffer is a type. It's an unsafe one. it's
+a mutable reference, so ownership of **one**. it has a value of a pointer to a mutable Buffer".
+I don't know enough about rust to know what's happening here.
+
+What I **do** understand, is this: Although Writer struct contains `unsafe` in it, we have
+engineered safety into it. This is done by wrapping `unsafe` containing type into a `Mutex`.
+As a system, this has the flaw of not _guaranteeing_ unsafe code is behind a safe interface,
+but provides an _effective_ tooling system to make this straight forward.
