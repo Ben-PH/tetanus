@@ -33,3 +33,41 @@ In terms of the code, we moved the panic information out of `.toml` and into our
 
 the `.json` file has a lot of important things. Without going into detail, it's 
 essentially takes the role of the `target-tripple`
+
+
+## Working VGA.
+
+### All the colors of the rainbow
+So first, we needed the `color` enum. Interisting is the `repr(u8)` and `dead_code`
+shenanigans. repr, essentially, means that the enum is 8-bit aligned.
+
+### The 80*25 shown in code
+We need somewhere to put the data that the scree needs to display. The `char` boing
+put onto screen, and the rainbow it expresses. adding `ColorCode` information (`u8`)
+to `char` information (`u8`) gives us a `repr(C)` struct that gives `ScreenChar` information
+(`repr(C)`, probably 16-bit aligned).
+
+This is enough information to send to a data struct that forms the container for what's up
+on the screen. we just need a 80*25 grid that can carry these information structs. This gives
+us the `Buffer` struct.
+
+
+### Doing something useful with the 80*25
+So now we have a configured VGA buffer, we need to put information into it.
+
+`Writer` will be our thing for this. We track the index, current ColorCode, and have
+a static array to a `VGABuffer`
+
+If we get a `\n`, we `new_line()` dat. If our index reaches our `WIDTH`, do it again, but
+we are gonna wait a bit before we `impl` the `new_line()` ~~function~~method
+
+It's clear that writing byte by byte is typical of a helper method. Let's just make `write_str()`
+which would make use of it...
+
+we then make `print_something()` that makes use of both functions to make `hello_world()`
+
+As of writing this... [It's working... IT'S WORKING](https://i.ytimg.com/vi/AXwGVXD7qEQ/hqdefault.jpg)
+
+Then, we put in the byte, and ++ the index.
+
+putting 
