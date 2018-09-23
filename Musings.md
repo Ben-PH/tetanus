@@ -175,3 +175,74 @@ and checks that everything is as it should be.
 
 There is something missing here. Remember how it runs on the host machine? the buffer
 sits at `0xb800`. We need to run this in QEMU environment to sort this out.
+
+
+
+## Integration testing - "we ain't in software anymore"
+We can't see what comes up in QEMU to see how running on "hardware" goes. Rather than
+pushing data to the "screen" (memory mapped I/O `0xb8000` for our vga text buffer), we'll
+push the data to another memory map - this time a memory mapped port: `port-mapped I/O`.
+
+This uses a separate bus for communication. we take advantage of the cpu's `in` and `out`.
+We'll be using UART: `uart_16550` and its crate to abstract away the nitty-gritty.
+
+### Hello vga...
+To print from serial, we need to make a static ref, wrap it in a Mutex and... waaaait,
+I've seen this before :P
+
+our static ref is a new `SerialPort` number `0x3F8` (1016). We `init()` it, which is relevant
+to the need for `lazy_static!` and put it in a Mutex before returning.
+We can use this static ref to print: lock it, format the args, and `.expect()` it.
+
+We use that to make a macro (`macro_rules!`) for `serial_print(ln)!`
+
+To run: 
+```
+> qemu-system-x86_64 \
+    -drive format=raw,file=target/x86_64-blog_os/debug/bootimage-blog_os.bin \
+    -serial mon:stdio
+```
+or...
+```
+bootimage run -- -serial mon:stdio
+```
+
+or if you want to output to a file instead of stdout...
+```
+-serial file:output-file.txt
+```
+
+### isa-debug-exit to the resscue
+
+we need to write to one of the ports in the x86_64 architectures IO bus. in this case we
+use `0xf4`. We pump 4 bytes into the port with `port.write(0)`. That gets shifted leftt 1, then
+the last bit becomes 1: `(bytes << 1) | 1`
+
+Notice how QEMU geos away immediately? probabyl want to hide it altogether, right?
+
+```
+bootimage run -- \
+    -serial mon:stdio \
+    -device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+    -display none
+```
+
+
+
+## MOAR EXECUTABLES? This is getting out of hand!
+
+Doing the previous is all well-and-good, until you realize that you don't want to produce it as a product!
+
+`src/bin` is your friend here
+
+in each file in this dir, a new `_start()` is basically a different kernel init. Your `main.rs`
+is home to the actual kernel. `src/bin/*` is home to "kernels" (test runs :P ).
+
+We also organized our files a bit better. Notice how `main` is a bit cleaner? 
+
+`lib.rs` holds some good stuff. Basically we've abstracted all the `extern crate` calls into
+an `extern crate <self>`, which calls `lib.rs` stuff. In here we have the `extern crate` as
+well as the `exit_qemu()` unsafe function. This allows us to just use `extern crate <self>`
+in any integration test in an alternate ~~main~~ _start.
+
+If we want to run these tests, `bootimage test` will sort us out!
