@@ -2,7 +2,14 @@
 #![cfg_attr(not(test), no_main)]
 #![cfg_attr(test, allow(dead_code, unused_macros, unused_imports))]
 
+#[macro_use]
+extern crate blog_os;
+
+use blog_os::exit_qemu;
+
 use core::panic::PanicInfo;
+
+
 
 
 /// Entry point, We need to give the linker something to work with.
@@ -11,6 +18,9 @@ use core::panic::PanicInfo;
 pub extern "C" fn _start() -> ! {
 
     println!("Hello, vga buffer");
+    serial_println!("no panic!");
+
+    unsafe { exit_qemu(); }
     loop {}
 }
 
