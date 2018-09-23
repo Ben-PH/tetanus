@@ -227,8 +227,22 @@ bootimage run -- \
     -display none
 ```
 
+
+
 ## MOAR EXECUTABLES? This is getting out of hand!
+
+Doing the previous is all well-and-good, until you realize that you don't want to produce it as a product!
 
 `src/bin` is your friend here
 
-in each file in this dir, a new `_start()` is basically a different kernel init.
+in each file in this dir, a new `_start()` is basically a different kernel init. Your `main.rs`
+is home to the actual kernel. `src/bin/*` is home to "kernels" (test runs :P ).
+
+We also organized our files a bit better. Notice how `main` is a bit cleaner? 
+
+`lib.rs` holds some good stuff. Basically we've abstracted all the `extern crate` calls into
+an `extern crate <self>`, which calls `lib.rs` stuff. In here we have the `extern crate` as
+well as the `exit_qemu()` unsafe function. This allows us to just use `extern crate <self>`
+in any integration test in an alternate ~~main~~ _start.
+
+If we want to run these tests, `bootimage test` will sort us out!
