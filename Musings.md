@@ -246,3 +246,90 @@ well as the `exit_qemu()` unsafe function. This allows us to just use `extern cr
 in any integration test in an alternate ~~main~~ _start.
 
 If we want to run these tests, `bootimage test` will sort us out!
+
+
+
+## What we've done so far
+
+So I moved away from the tutorial for a day or two, and came back. This has taught me a couple of things
+ * It emphasised the difference between unit and integration tests in an interesting way.
+ * Cemented in my brain how to abstract the core requirements of a system (into `lib.rs`)
+  * In doing this, we can build different kernel entries (i.e. `_start()_`)
+ * The difference between what's in QEMU output and terminal output (via `serial` library: `serial_print!`)
+
+In terms of what I'm learning about Rust, it's giving me a more practical idea of how to manage a project.
+Splitting into files is not just a good idea for ergonomics, it also structures safety. A safe function,
+calling unsafe code, polutes its entire scope if use of `unsafe` _becomes_ unsafe.
+
+I'm reading through [this read on unsafe rust](https://doc.rust-lang.org/nomicon) and it's a bit of a revalation...
+
+Anyway. To sum up:
+ * To make a binary the kernel way, you need to:
+  * `no_std` it
+  * `no_main` it then `cargo rustc -- -Z ...` to manage the linker
+  * give a `_start()` as the entry point
+   * unless you are running it as part of your system and not in QEMU 
+  * disable stack unwinding by setting the `\[profile\]` in `.toml` to have `panic = "abort"`
+  * implement `panic` with a `-> !` taking `&PanicInfo` arg
+  
+ * To make an actual Kernel that runs on top of QEMU we must
+  * implement a BIOS boot
+  * specify a target iwth a `.json`
+  * use `cargo xbuild --target ...json` to compile it
+  * have `bootlloader_precompiled = "0.2.0"` in our `.toml` dependencies
+   * use that in our systems as an `extern crate`
+  * now use `bootimage build` where we used to use `cargo xbuild` (same `--target ...`)
+  
+ * to make a buffer to print to a screen
+  * have a `Color` enum, under `repr(u8)`
+  * pack two `Color` variables into a `ColorCode` for foreground and background
+  * pack a `ColorCode` `u8` into a `ScreenChar` struct
+  * make a `Buffer` type to contain a 2d array of `ScreenChar`s
+  
+ * To start writing to this:
+   * a metadata struct `Writer` for the `Buffer`. contains the current `column` and `ColorCode`
+    * also carries a static lifetime reference to mutable buffer.
+     * "The kernel sees all, knows all, touches all, for all time."
+   * `Writer` impl has methods that puts the data into the buffer
+ * This is Going to be optimised out by the compiler when we start using it, so...
+  * use `extern crate Volatile` and wrap `ScreenChar`s up in the `Buffer` struct
+  * we use the `write()` method in the `Volatile` type, taking the `ScreenChar` that we
+  want in the argument.
+  * Now that we have a way to write to the buffer, we `impl fmt::Write for Writer`
+   * Prototyping Writer, we can make a new one that has the buffer ref as `0xb800`
+   * it is a mutable reference of a raw ptr, type-casting an adress to `\*mut Buffer`
+   * this is `unsafe`
+  * A global interface must be inside a `lazy_static!` scope (with `macro_use` and `extern_crate`, etc)
+  * it is a type wrapping a `Writer` inside a `Mutex`
+  * with this interface available, we can `macro_rules!` the `print(ln)!` macros
+  * With these macros, we can now give `panic!` definitions a `println!` usage.
+  
+ * To set up testing, we:
+  * put `#[cfg(not(test))]` above our `panic` and `_start()` impl
+  * make sure that we have `main` when testing
+  * now we can run `cargo test`
+  * we can also silence warnings with a `#![cfg_atr...]`
+  * also need to include `extern crate std` when testing
+  * we can now define our `mod test {}` code...
+  * Don't forget to get access to overything in the test, and to construct your stuff
+ 
+ * An mportant tool for the integration test is the serial port
+  * `uart_16550` as a dep
+  * make a `mod serial`
+  * make a global interface similar to `WRITER`
+  * `let mut serial_port = SerialPort::new(0x3f8);` for x86 arch
+  * initthe SerialPort object
+  * use this object as a new Mutex argument
+  * make `serial_print!` macros
+  * make `exit_qemu` using `extern crate x85_64`
+  * run with `-seria/ mon:stdio -device ... -display none` as needed
+
+ * To set up integration testing:
+  * make a `/src/bin` directory to put in your separate executables
+  * abstract lines such as `extern crate ...` into `lib.rs`, invoke with `extern crate <self`
+  * build a test executable 
+  * build with `bootimage run --bin <filename without .rs`
+  * annotate your macros with `#[macro_export]` inside your extra library files
+
+
+  

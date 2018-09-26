@@ -12,8 +12,7 @@ use blog_os::exit_qemu;
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
-    panic!("PANIC! at the disco");
-    serial_println!("should not get here :/");
+    serial_println!("started, next line is exit_qemu");
     unsafe {exit_qemu();}
     loop {}
 }
