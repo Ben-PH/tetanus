@@ -361,13 +361,14 @@ we have the `InterruptDescriptorTable` object in the `x86_64` crate to handle mo
 The rest is instructional to implement that.
 
 
-|exception stack frame |
-|---|
-|Stack alignment |
-|Stack Segment |
-|  SP |
-|  RFLAGS (32bit)  |
-|  Code segment |
-|  Inst P |
-|   Err Code|
-|   Stack frame|
+| exception stack frame | size(byte) |
+|-----------------------|------------|
+| Stack alignment       |          2 |
+| Stack Segment         |            |
+| SP                    |            |
+| RFLAGS                |          4 |
+| Code segment          |            |
+| Inst P                |            |
+| Err Code              |            |
+| Stack frame           |            |
+
