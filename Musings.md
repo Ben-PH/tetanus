@@ -361,8 +361,9 @@ we have the `InterruptDescriptorTable` object in the `x86_64` crate to handle mo
 The rest is instructional to implement that.
 
 
-|Stack alignment |
+|exception stack frame |
 |---|
+|Stack alignment |
 |Stack Segment |
 |  SP |
 |  RFLAGS (32bit)  |
