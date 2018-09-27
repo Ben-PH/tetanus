@@ -19,11 +19,14 @@ use core::panic::PanicInfo;
 #[cfg(not(test))]
 #[no_mangle]
 pub extern "C" fn _start() -> ! {
+    println!("Hello World{}", "!");
 
-    println!("Hello, vga buffer");
-    serial_println!("no panic!");
+    init_idt();
 
-    unsafe { exit_qemu(); }
+    // invoke a breakpoint exception
+    x86_64::instructions::int3();
+
+    println!("It did not crash!");
     loop {}
 }
 
