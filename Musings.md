@@ -377,6 +377,8 @@ The rest is instructional to implement that.
 
 First we `init_idt()`, but we are also referenced to[how debuggers work](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints "relevant to the `int3` instruction") 
 
+####  Hold up... ####
+
 As I added some things, then made the `extern "x86-interrupt" fn breakpoint_handler` I was presented
 with an error. Working to fix it, it became clear that there was a deficiency in my understanding
 on how to work with cargo, xbuild, bootimage, etc. to build a kernel. It started with `can't find
@@ -384,4 +386,10 @@ crate for \`core\`` we came accross this problem all the way back when we first 
 binary... weird.
 
 I'm not entirely sure what's going on, I'm going to go back in commit history, see where things went different.
+
+#### Some moments later ####
+
+Well, it was just the fact that I moved the project into another directory. Once I changed the filepath
+of the project root to be the same as it was originall, everything was fine. getting an understanding
+so I can be in control of the FP rather than the other way round is low on my priority list.
 
