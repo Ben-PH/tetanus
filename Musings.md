@@ -331,5 +331,31 @@ Anyway. To sum up:
   * build with `bootimage run --bin <filename without .rs`
   * annotate your macros with `#[macro_export]` inside your extra library files
 
+##  CPU Excuptions##
 
+### Pre-Reading ###
+
+There are many different things that trigger an exe in the cpu. Some that are straight
+forward are div-zero's and page faults. we can bundle them up into a `struct` that forms
+an **interuption descriptor table** (given to us by the x86_64 crate).
+
+Like my time with os161, there is a calling convention to be respected. A major clue of
+a challange here, is in the name. **interupt**. Doesn't matter what's going on, an interupt
+will jump the queu and hog the program counter. OF relevance:
+  * 6 registers for the argument - `rdi` `rsi` `rdx` `rcx` `r8` `r9`
+  * then the stack
+  * results into `rax` and `rdx`
   
+**all** preserved registers must be saved - that's because an interupt can occur at any time...
+The interupt takes 7 steps
+1. Alighn stack pointer (16 bytes)
+2. Switch stack
+3. Push old SP
+4. push and update `RFLAGS` register
+5. push IP
+6. push err code
+7. invoke the handler
+
+we have the `InterruptDescriptorTable` object in the `x86_64` crate to handle most of the details.
+
+The rest is instructional to implement that.
