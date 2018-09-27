@@ -400,3 +400,47 @@ the `load` method on `idt`[load documentation](https://docs.rs/x86_64/0.1.1/x86_
 basically calling on the `lidt` instruction from the `x86_64` instruction set. _our_ `idt`, under the hood,
 appears to be a pointer to a place in memory that _is_ the idt. Rather than just following and doing _code by numbers_,
 let's look at the rabbit hole
+
+#### The idt.load() rabbit hole ####
+`new()` and `load()` can be [seen here](https://docs.rs/x86_64/0.1.1/x86_64/structures/idt/struct.Idt.html#methods), and going into the source we can see:
+  * that `new()` returns a reference to an Idt struct, same as any other `new()`
+  * `new()`s Idt struct shapes and populates a place in memory. This place has the Idt equivilent of nothing in there.
+  * a normal `new()` would just point to the heap.
+  * `load()` makes used of `lidt()`, defined as:
+  ```
+ pub unsafe fn lidt(idt: &DescriptorTablePointer) {
+    asm!("lidt ($0)" :: "r" (idt) : "memory");
+ }
+ ```
+  * let's say the value of the unsafe `idt` is `0xDEADBEEF`
+    * `lidt()` calls an `asm!`
+    * this `asm!` results in `lidt 0xDEADBEEF` or equivilant
+    * `lidt` asm code puts `0xDEADBEEF` int `IDTR` as described in [this source](https://wiki.osdev.org/Interrupt_Descriptor_Table "OS Dev wiki IDT") 
+    * The bits in `IDTR` correspond to `base` and `libit`
+    * It has these bits because of the logic defined in `load()` (comments mine):
+
+    ``` rust
+       pub fn load(&'static self) {
+        use instructions::tables::{DescriptorTablePointer, lidt};
+        use core::mem::size_of;
+
+        let ptr = DescriptorTablePointer {
+            // where IDTR needs to point to
+            base: self as *const _ as u64,
+            // How big the memory block is that it's pointing to
+            limit: (size_of::<Self>() - 1) as u16,
+        };
+
+        // shown above
+        unsafe { lidt(&ptr) };
+    } 
+    ```
+ 
+
+So, to sum up that rabbit hole, when idt goes out of scop in `init_idt()`, that would
+result in a freeing of what `idt` points to. That is also what `IDTR` points to. Not good.
+The lifetime of `idt` is defined by `IDTR` not the lifetime of the function. This lifetime is
+"Until another IDT is loaded". It's also useless to have any more, or less than one idt at
+a time, because there is just one `IDTR` (I think...).
+
+From here, we can continue...
