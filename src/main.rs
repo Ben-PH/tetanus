@@ -1,11 +1,13 @@
 #![no_std]
 #![cfg_attr(not(test), no_main)]
 #![cfg_attr(test, allow(dead_code, unused_macros, unused_imports))]
+#![feature(abi_x86_interrupt)]
 
 #[macro_use]
 extern crate blog_os;
+extern crate x86_64;
 
-use x86_64::structures::idt::InterruptDescriptorTable;
+use x86_64::structures::idt::{InterruptDescriptorTable, ExceptionStackFrame};
 use blog_os::exit_qemu;
 
 use core::panic::PanicInfo;
@@ -33,10 +35,15 @@ pub fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
+        let mut idt = InterruptDescriptorTable::new();
+        idt.breakpoint.set_handler_fn(breakpoint_handler);
 pub fn init_idt() {
     let mut idt = InterruptDescriptorTable::new();
+    IDT.load();
 }
 
 extern "x86-interupt" fn breakpoint_handler(stack_fm: &mut ExceptionStackFrame) {
     println!("EXCePTION: BREAKPOINT\n{:?}", stack_frame);
+extern "x86-interrupt" fn breakpoint_handler(stack_fm: &mut ExceptionStackFrame) {
+    println!("EXCePTION: BREAKPOINT\n{:?}", stack_fm);
 }

@@ -393,3 +393,10 @@ Well, it was just the fact that I moved the project into another directory. Once
 of the project root to be the same as it was originall, everything was fine. getting an understanding
 so I can be in control of the FP rather than the other way round is low on my priority list.
 
+#### Back to the good stuff ####
+So we start defining the `init_idt` function. The created idt, however, has a built in requirement for
+a static lifetime. If we make an `idt` within a function, the reference is stored on the stack. We call
+the `load` method on `idt`[load documentation](https://docs.rs/x86_64/0.1.1/x86_64/structures/idt/struct.Idt.html#method.load "handles the asm abstraction") shows us that we are
+basically calling on the `lidt` instruction from the `x86_64` instruction set. _our_ `idt`, under the hood,
+appears to be a pointer to a place in memory that _is_ the idt. Rather than just following and doing _code by numbers_,
+let's look at the rabbit hole
