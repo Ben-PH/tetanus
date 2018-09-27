@@ -372,3 +372,16 @@ The rest is instructional to implement that.
 | Err Code              |            |
 | Stack frame           |            |
 
+
+### As we go ###
+
+First we `init_idt()`, but we are also referenced to[how debuggers work](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints "relevant to the `int3` instruction") 
+
+As I added some things, then made the `extern "x86-interrupt" fn breakpoint_handler` I was presented
+with an error. Working to fix it, it became clear that there was a deficiency in my understanding
+on how to work with cargo, xbuild, bootimage, etc. to build a kernel. It started with `can't find
+crate for \`core\`` we came accross this problem all the way back when we first built a free-standing
+binary... weird.
+
+I'm not entirely sure what's going on, I'm going to go back in commit history, see where things went different.
+
