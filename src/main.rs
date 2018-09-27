@@ -5,6 +5,7 @@
 #[macro_use]
 extern crate blog_os;
 
+use x86_64::structures::idt::InterruptDescriptorTable;
 use blog_os::exit_qemu;
 
 use core::panic::PanicInfo;
@@ -30,4 +31,12 @@ pub extern "C" fn _start() -> ! {
 pub fn panic(info: &PanicInfo) -> ! {
     println!("{}", info);
     loop {}
+}
+
+pub fn init_idt() {
+    let mut idt = InterruptDescriptorTable::new();
+}
+
+extern "x86-interupt" fn breakpoint_handler(stack_fm: &mut ExceptionStackFrame) {
+    println!("EXCePTION: BREAKPOINT\n{:?}", stack_frame);
 }
