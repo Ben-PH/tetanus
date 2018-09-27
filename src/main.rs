@@ -35,15 +35,20 @@ pub fn panic(info: &PanicInfo) -> ! {
     loop {}
 }
 
+#[macro_use]
+extern crate lazy_static;
+lazy_static! {
+    pub static ref IDT: InterruptDescriptorTable =  {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+        idt
+    };
+}
+
 pub fn init_idt() {
-    let mut idt = InterruptDescriptorTable::new();
     IDT.load();
 }
 
-extern "x86-interupt" fn breakpoint_handler(stack_fm: &mut ExceptionStackFrame) {
-    println!("EXCePTION: BREAKPOINT\n{:?}", stack_frame);
 extern "x86-interrupt" fn breakpoint_handler(stack_fm: &mut ExceptionStackFrame) {
     println!("EXCePTION: BREAKPOINT\n{:?}", stack_fm);
 }

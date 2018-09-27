@@ -444,3 +444,21 @@ The lifetime of `idt` is defined by `IDTR` not the lifetime of the function. Thi
 a time, because there is just one `IDTR` (I think...).
 
 From here, we can continue...
+
+#### Another run-time static ####
+If we look at `WRITER` to make a run-time static:
+``` rust
+lazy_static! {
+    pub static ref <REF_NAME>: <REF_TYPE> = {
+        <run-time logic to build the ref>
+        <non ; terminated line turning this scope into the built ref>
+    };
+}
+```
+
+using this, we can build a reference to an idt, that is initialised at an arbitrary point in
+time, but lasts indefinately. To put that into `IDTR`, we `IDT.load()` which runs the `lazy_static!`
+
+
+now! we change our `_start()` so we can test it! We `init_idt()` put it through the ringer,
+then check to see if it crashes or not. 
