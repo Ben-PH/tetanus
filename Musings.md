@@ -246,3 +246,230 @@ well as the `exit_qemu()` unsafe function. This allows us to just use `extern cr
 in any integration test in an alternate ~~main~~ _start.
 
 If we want to run these tests, `bootimage test` will sort us out!
+
+
+
+## What we've done so far
+
+So I moved away from the tutorial for a day or two, and came back. This has taught me a couple of things
+ * It emphasised the difference between unit and integration tests in an interesting way.
+ * Cemented in my brain how to abstract the core requirements of a system (into `lib.rs`)
+  * In doing this, we can build different kernel entries (i.e. `_start()_`)
+ * The difference between what's in QEMU output and terminal output (via `serial` library: `serial_print!`)
+
+In terms of what I'm learning about Rust, it's giving me a more practical idea of how to manage a project.
+Splitting into files is not just a good idea for ergonomics, it also structures safety. A safe function,
+calling unsafe code, polutes its entire scope if use of `unsafe` _becomes_ unsafe.
+
+I'm reading through [this read on unsafe rust](https://doc.rust-lang.org/nomicon) and it's a bit of a revalation...
+
+Anyway. To sum up:
+ * To make a binary the kernel way, you need to:
+  * `no_std` it
+  * `no_main` it then `cargo rustc -- -Z ...` to manage the linker
+  * give a `_start()` as the entry point
+   * unless you are running it as part of your system and not in QEMU 
+  * disable stack unwinding by setting the `\[profile\]` in `.toml` to have `panic = "abort"`
+  * implement `panic` with a `-> !` taking `&PanicInfo` arg
+  
+ * To make an actual Kernel that runs on top of QEMU we must
+  * implement a BIOS boot
+  * specify a target iwth a `.json`
+  * use `cargo xbuild --target ...json` to compile it
+  * have `bootlloader_precompiled = "0.2.0"` in our `.toml` dependencies
+   * use that in our systems as an `extern crate`
+  * now use `bootimage build` where we used to use `cargo xbuild` (same `--target ...`)
+  
+ * to make a buffer to print to a screen
+  * have a `Color` enum, under `repr(u8)`
+  * pack two `Color` variables into a `ColorCode` for foreground and background
+  * pack a `ColorCode` `u8` into a `ScreenChar` struct
+  * make a `Buffer` type to contain a 2d array of `ScreenChar`s
+  
+ * To start writing to this:
+   * a metadata struct `Writer` for the `Buffer`. contains the current `column` and `ColorCode`
+    * also carries a static lifetime reference to mutable buffer.
+     * "The kernel sees all, knows all, touches all, for all time."
+   * `Writer` impl has methods that puts the data into the buffer
+ * This is Going to be optimised out by the compiler when we start using it, so...
+  * use `extern crate Volatile` and wrap `ScreenChar`s up in the `Buffer` struct
+  * we use the `write()` method in the `Volatile` type, taking the `ScreenChar` that we
+  want in the argument.
+  * Now that we have a way to write to the buffer, we `impl fmt::Write for Writer`
+   * Prototyping Writer, we can make a new one that has the buffer ref as `0xb800`
+   * it is a mutable reference of a raw ptr, type-casting an adress to `\*mut Buffer`
+   * this is `unsafe`
+  * A global interface must be inside a `lazy_static!` scope (with `macro_use` and `extern_crate`, etc)
+  * it is a type wrapping a `Writer` inside a `Mutex`
+  * with this interface available, we can `macro_rules!` the `print(ln)!` macros
+  * With these macros, we can now give `panic!` definitions a `println!` usage.
+  
+ * To set up testing, we:
+  * put `#[cfg(not(test))]` above our `panic` and `_start()` impl
+  * make sure that we have `main` when testing
+  * now we can run `cargo test`
+  * we can also silence warnings with a `#![cfg_atr...]`
+  * also need to include `extern crate std` when testing
+  * we can now define our `mod test {}` code...
+  * Don't forget to get access to overything in the test, and to construct your stuff
+ 
+ * An mportant tool for the integration test is the serial port
+  * `uart_16550` as a dep
+  * make a `mod serial`
+  * make a global interface similar to `WRITER`
+  * `let mut serial_port = SerialPort::new(0x3f8);` for x86 arch
+  * initthe SerialPort object
+  * use this object as a new Mutex argument
+  * make `serial_print!` macros
+  * make `exit_qemu` using `extern crate x85_64`
+  * run with `-seria/ mon:stdio -device ... -display none` as needed
+
+ * To set up integration testing:
+  * make a `/src/bin` directory to put in your separate executables
+  * abstract lines such as `extern crate ...` into `lib.rs`, invoke with `extern crate <self`
+  * build a test executable 
+  * build with `bootimage run --bin <filename without .rs`
+  * annotate your macros with `#[macro_export]` inside your extra library files
+
+##  CPU Excuptions##
+
+### Pre-Reading ###
+
+There are many different things that trigger an exe in the cpu. Some that are straight
+forward are div-zero's and page faults. we can bundle them up into a `struct` that forms
+an **interuption descriptor table** (given to us by the x86_64 crate).
+
+Like my time with os161, there is a calling convention to be respected. A major clue of
+a challange here, is in the name. **interupt**. Doesn't matter what's going on, an interupt
+will jump the queu and hog the program counter. OF relevance:
+  * 6 registers for the argument - `rdi` `rsi` `rdx` `rcx` `r8` `r9`
+  * then the stack
+  * results into `rax` and `rdx`
+  
+**all** preserved registers must be saved - that's because an interupt can occur at any time...
+The interupt takes 7 steps
+1. Alighn stack pointer (16 bytes)
+2. Switch stack
+3. Push old SP
+4. push and update `RFLAGS` register
+5. push IP
+6. push err code
+7. invoke the handler
+
+we have the `InterruptDescriptorTable` object in the `x86_64` crate to handle most of the details.
+
+The rest is instructional to implement that.
+
+
+| exception stack frame | size(byte) |
+|-----------------------|------------|
+| Stack alignment       |          2 |
+| Stack Segment         |            |
+| SP                    |            |
+| RFLAGS                |          4 |
+| Code segment          |            |
+| Inst P                |            |
+| Err Code              |            |
+| Stack frame           |            |
+
+
+### As we go ###
+
+First we `init_idt()`, but we are also referenced to[how debuggers work](https://eli.thegreenplace.net/2011/01/27/how-debuggers-work-part-2-breakpoints "relevant to the `int3` instruction") 
+
+####  Hold up... ####
+
+As I added some things, then made the `extern "x86-interrupt" fn breakpoint_handler` I was presented
+with an error. Working to fix it, it became clear that there was a deficiency in my understanding
+on how to work with cargo, xbuild, bootimage, etc. to build a kernel. It started with `can't find
+crate for \`core\`` we came accross this problem all the way back when we first built a free-standing
+binary... weird.
+
+I'm not entirely sure what's going on, I'm going to go back in commit history, see where things went different.
+
+#### Some moments later ####
+
+Well, it was just the fact that I moved the project into another directory. Once I changed the filepath
+of the project root to be the same as it was originall, everything was fine. getting an understanding
+so I can be in control of the FP rather than the other way round is low on my priority list.
+
+#### Back to the good stuff ####
+So we start defining the `init_idt` function. The created idt, however, has a built in requirement for
+a static lifetime. If we make an `idt` within a function, the reference is stored on the stack. We call
+the `load` method on `idt`[load documentation](https://docs.rs/x86_64/0.1.1/x86_64/structures/idt/struct.Idt.html#method.load "handles the asm abstraction") shows us that we are
+basically calling on the `lidt` instruction from the `x86_64` instruction set. _our_ `idt`, under the hood,
+appears to be a pointer to a place in memory that _is_ the idt. Rather than just following and doing _code by numbers_,
+let's look at the rabbit hole
+
+#### The idt.load() rabbit hole ####
+`new()` and `load()` can be [seen here](https://docs.rs/x86_64/0.1.1/x86_64/structures/idt/struct.Idt.html#methods), and going into the source we can see:
+  * that `new()` returns a reference to an Idt struct, same as any other `new()`
+  * `new()`s Idt struct shapes and populates a place in memory. This place has the Idt equivilent of nothing in there.
+  * a normal `new()` would just point to the heap.
+  * `load()` makes used of `lidt()`, defined as:
+  ```
+ pub unsafe fn lidt(idt: &DescriptorTablePointer) {
+    asm!("lidt ($0)" :: "r" (idt) : "memory");
+ }
+ ```
+  * let's say the value of the unsafe `idt` is `0xDEADBEEF`
+    * `lidt()` calls an `asm!`
+    * this `asm!` results in `lidt 0xDEADBEEF` or equivilant
+    * `lidt` asm code puts `0xDEADBEEF` int `IDTR` as described in [this source](https://wiki.osdev.org/Interrupt_Descriptor_Table "OS Dev wiki IDT") 
+    * The bits in `IDTR` correspond to `base` and `libit`
+    * It has these bits because of the logic defined in `load()` (comments mine):
+
+    ``` rust
+       pub fn load(&'static self) {
+        use instructions::tables::{DescriptorTablePointer, lidt};
+        use core::mem::size_of;
+
+        let ptr = DescriptorTablePointer {
+            // where IDTR needs to point to
+            base: self as *const _ as u64,
+            // How big the memory block is that it's pointing to
+            limit: (size_of::<Self>() - 1) as u16,
+        };
+
+        // shown above
+        unsafe { lidt(&ptr) };
+    } 
+    ```
+ 
+
+So, to sum up that rabbit hole, when idt goes out of scop in `init_idt()`, that would
+result in a freeing of what `idt` points to. That is also what `IDTR` points to. Not good.
+The lifetime of `idt` is defined by `IDTR` not the lifetime of the function. This lifetime is
+"Until another IDT is loaded". It's also useless to have any more, or less than one idt at
+a time, because there is just one `IDTR` (I think...).
+
+From here, we can continue...
+
+#### Another run-time static ####
+If we look at `WRITER` to make a run-time static:
+``` rust
+lazy_static! {
+    pub static ref <REF_NAME>: <REF_TYPE> = {
+        <run-time logic to build the ref>
+        <non ; terminated line turning this scope into the built ref>
+    };
+}
+```
+
+using this, we can build a reference to an idt, that is initialised at an arbitrary point in
+time, but lasts indefinately. To put that into `IDTR`, we `IDT.load()` which runs the `lazy_static!`
+
+
+now! we change our `_start()` so we can test it! We `init_idt()` put it through the ringer,
+then check to see if it crashes or not. 
+
+
+#### Getting a test done ####
+
+All we do here is copy over our `main.rs` `_start()` to start off with. 
+
+We build our idt. through `idt_init()`, same as `main.rs`
+
+We change our interupt to, instead of just printing a line, we call on a tool that can guarantee concurrancy safety to shared memory access. `AttomicUsize::fetch_add(1, Ordering::SeqCst)` is called upon!
+Essentially, we hijack the breakpoint handler to atomically count how many times it's called (instead of, say, breaking...). We then use `AttomicUsize::load(Ordering::SeqCst)` to get the number out.
+
