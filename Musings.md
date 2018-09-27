@@ -462,3 +462,14 @@ time, but lasts indefinately. To put that into `IDTR`, we `IDT.load()` which run
 
 now! we change our `_start()` so we can test it! We `init_idt()` put it through the ringer,
 then check to see if it crashes or not. 
+
+
+#### Getting a test done ####
+
+All we do here is copy over our `main.rs` `_start()` to start off with. 
+
+We build our idt. through `idt_init()`, same as `main.rs`
+
+We change our interupt to, instead of just printing a line, we call on a tool that can guarantee concurrancy safety to shared memory access. `AttomicUsize::fetch_add(1, Ordering::SeqCst)` is called upon!
+Essentially, we hijack the breakpoint handler to atomically count how many times it's called (instead of, say, breaking...). We then use `AttomicUsize::load(Ordering::SeqCst)` to get the number out.
+
